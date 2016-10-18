@@ -45,10 +45,14 @@ long targetPos= 0;
 
 void loop(){
 
-  // set target encoder position. 1024 = 360 deg.
+  // set target encoder position. 
+  // 1024 = 360 deg.
+  // 1 deg= 2.8444 enc steps
+  // 1 step = 0.0326 deg. C
   // on TEMP_PIN, each inc = ~ 0.16 deg. C
   
-  targetPos= (analogRead(TEMP_PIN)-400) * 2;
+  float degC= analogRead(TEMP_PIN) * 0.16 + 0.00;
+  targetPos= degC / 0.0326 + 0.00;
   
   long posError= targetPos - encPos;
 
