@@ -1,5 +1,9 @@
 #include "digitalWriteFast.h" // encoder tracking
 #include <AccelStepper.h> // dial motor driving
+#include <Wire.h>
+#include <Adafruit_Sensor.h>
+#include "Adafruit_TMP006.h"
+
 
 // motor driver
 #define MOTOR_STEP_PIN A1
@@ -11,7 +15,7 @@
 #define ENC_Z_PIN 6
 
 // temp sensor
-#define TEMP_PIN A5
+Adafruit_TMP006 tmpSensor;
 
 volatile bool encBSet;
 volatile long encPos= 500;
@@ -29,19 +33,24 @@ void setup() {
   // setup motor
   stepper.setMaxSpeed(1500); // steps per sec
   
-  //setup sensor
-  pinMode(TEMP_PIN, INPUT);
-  analogReference(EXTERNAL);
-  
   interrupts();             // enable all interrupts
   
   Serial.begin(9600);
+
+  // setup sensor
+  if (! tmpSensor.begin()) {
+    Serial.println("No sensor found");
+    while (1);
+  }
 
   homeMotor();
 }
 
 unsigned long lastPrint=0;
+unsigned long lastRead=0;
 long targetPos= 0;
+#define NUM_READS 10
+float readings[NUM_READS];
 
 void loop(){
 
@@ -51,10 +60,19 @@ void loop(){
   // 1 deg. C = 6.96 deg
   // 1 deg. C = 19.8 steps
   // on TEMP_PIN, each inc = ~ 0.16 deg. C
-  
-  float degC= analogRead(TEMP_PIN) * 0.16 - 24.0;
-  targetPos= degC * 19.8 + 0.00;
 
+  // running average of 10 readings taken at 10 Hz, so 1 Hz response time
+  if(millis() > lastRead + 100){
+    //shift readings back
+    for( int i=0; i < NUM_READS-1; i++) readings[i]= readings[i+1];
+    readings[NUM_READS-1]= tmpSensor.readObjTempC();
+    float avg=0;
+    for(int i=0; i< NUM_READS; i++) avg+= readings[i];
+    avg/= NUM_READS; 
+    targetPos= (avg - 23.00) * 19.8;
+    lastRead= millis();
+  }
+  
   // square wave test
   //if ((millis()/2000) % 2 == 0) targetPos= 0;
   //else targetPos= 10.0 * 19.8;
@@ -84,10 +102,13 @@ void loop(){
   //if(stepper.distanceToGo() == 0) stepper.moveTo(random(-5000,5000));
   
   if(millis() > lastPrint+500){
-    Serial.print(targetPos);
-    Serial.print(" ");
-    Serial.print(encPos-targetPos);
-    Serial.println();
+    float objt = tmpSensor.readObjTempC();
+    Serial.print(objt); Serial.println(" *C");
+
+    //Serial.print(targetPos);
+    //Serial.print(" ");
+    //Serial.print(encPos-targetPos);
+    //Serial.println();
     lastPrint= millis();
   }
 
