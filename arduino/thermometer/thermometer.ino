@@ -48,11 +48,16 @@ void loop(){
   // set target encoder position. 
   // 1024 = 360 deg.
   // 1 deg= 2.8444 enc steps
-  // 1 step = 0.0326 deg. C
+  // 1 deg. C = 6.96 deg
+  // 1 deg. C = 19.8 steps
   // on TEMP_PIN, each inc = ~ 0.16 deg. C
   
-  float degC= analogRead(TEMP_PIN) * 0.16 + 0.00;
-  targetPos= degC / 0.0326 + 0.00;
+  float degC= analogRead(TEMP_PIN) * 0.16 - 24.0;
+  targetPos= degC * 19.8 + 0.00;
+
+  // square wave test
+  //if ((millis()/2000) % 2 == 0) targetPos= 0;
+  //else targetPos= 10.0 * 19.8;
   
   long posError= targetPos - encPos;
 
